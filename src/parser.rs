@@ -85,7 +85,6 @@ named!(
         opt!(crlf) >>
         tag!("OK") >>
         crlf >>
-        crlf >>
         (
             Response::Ok
         )

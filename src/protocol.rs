@@ -2,13 +2,13 @@ use core::fmt::Write;
 use heapless::{consts, String};
 
 #[derive(Debug)]
-pub enum Command {
+pub enum Command<'a> {
     QueryFirmwareInfo,
     SetBand(LoraRegion),
     SetMode(LoraMode),
     GetBand,
     Join(ConnectMode),
-    SetConfig(ConfigOption),
+    SetConfig(ConfigOption<'a>),
     GetConfig(ConfigKey),
     Reset(ResetMode),
 }
@@ -32,20 +32,11 @@ pub enum LoraMode {
     P2P = 1,
 }
 
-#[derive(Debug)]
-pub struct DevAddr([u8; 4]);
-
-#[derive(Debug)]
-pub struct EUI([u8; 8]);
-
-#[derive(Debug)]
-pub struct AppKey([u8; 16]);
-
-#[derive(Debug)]
-pub struct NwksKey([u8; 16]);
-
-#[derive(Debug)]
-pub struct AppsKey([u8; 16]);
+type DevAddr = [u8; 4];
+type EUI = [u8; 8];
+type AppKey = [u8; 16];
+type NwksKey = [u8; 16];
+type AppsKey = [u8; 16];
 
 #[derive(Debug)]
 pub enum ConfigKey {
@@ -58,13 +49,13 @@ pub enum ConfigKey {
 }
 
 #[derive(Debug)]
-pub enum ConfigOption {
-    DevAddr(DevAddr),
-    DevEui(EUI),
-    AppEui(EUI),
-    AppKey(AppKey),
-    NwksKey(NwksKey),
-    AppsKey(AppsKey),
+pub enum ConfigOption<'a> {
+    DevAddr(&'a DevAddr),
+    DevEui(&'a EUI),
+    AppEui(&'a EUI),
+    AppKey(&'a AppKey),
+    NwksKey(&'a NwksKey),
+    AppsKey(&'a AppsKey),
     /*
     PwrLevel,
     Adr,
@@ -112,7 +103,7 @@ pub enum LoraRegion {
 
 pub type CommandBuffer = String<consts::U128>;
 
-impl Command {
+impl<'a> Command<'a> {
     pub fn buffer() -> CommandBuffer {
         String::new()
     }
@@ -185,99 +176,99 @@ impl ConfigKey {
     }
 }
 
-impl ConfigOption {
+impl<'a> ConfigOption<'a> {
     pub fn encode(&self, s: &mut CommandBuffer) {
         match self {
             ConfigOption::DevAddr(addr) => {
                 write!(
                     s,
-                    "dev_addr:{}{}{}{}",
-                    addr.0[0], addr.0[1], addr.0[2], addr.0[3]
+                    "dev_addr:{:02x}{:02x}{:02x}{:02x}",
+                    addr[0], addr[1], addr[2], addr[3]
                 )
                 .unwrap();
             }
             ConfigOption::DevEui(eui) => {
                 write!(
                     s,
-                    "dev_eui:{}{}{}{}{}{}{}{}",
-                    eui.0[0], eui.0[1], eui.0[2], eui.0[3], eui.0[4], eui.0[5], eui.0[6], eui.0[7]
+                    "dev_eui:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                    eui[0], eui[1], eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]
                 )
                 .unwrap();
             }
             ConfigOption::AppEui(eui) => {
                 write!(
                     s,
-                    "app_eui:{}{}{}{}{}{}{}{}",
-                    eui.0[0], eui.0[1], eui.0[2], eui.0[3], eui.0[4], eui.0[5], eui.0[6], eui.0[7]
+                    "app_eui:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                    eui[0], eui[1], eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]
                 )
                 .unwrap();
             }
             ConfigOption::AppKey(key) => {
                 write!(
                     s,
-                    "app_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-                    key.0[0],
-                    key.0[1],
-                    key.0[2],
-                    key.0[3],
-                    key.0[4],
-                    key.0[5],
-                    key.0[6],
-                    key.0[7],
-                    key.0[8],
-                    key.0[9],
-                    key.0[10],
-                    key.0[11],
-                    key.0[12],
-                    key.0[13],
-                    key.0[14],
-                    key.0[15]
+                    "app_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                    key[0],
+                    key[1],
+                    key[2],
+                    key[3],
+                    key[4],
+                    key[5],
+                    key[6],
+                    key[7],
+                    key[8],
+                    key[9],
+                    key[10],
+                    key[11],
+                    key[12],
+                    key[13],
+                    key[14],
+                    key[15]
                 )
                 .unwrap();
             }
             ConfigOption::NwksKey(key) => {
                 write!(
                     s,
-                    "nwks_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-                    key.0[0],
-                    key.0[1],
-                    key.0[2],
-                    key.0[3],
-                    key.0[4],
-                    key.0[5],
-                    key.0[6],
-                    key.0[7],
-                    key.0[8],
-                    key.0[9],
-                    key.0[10],
-                    key.0[11],
-                    key.0[12],
-                    key.0[13],
-                    key.0[14],
-                    key.0[15]
+                    "nwks_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                    key[0],
+                    key[1],
+                    key[2],
+                    key[3],
+                    key[4],
+                    key[5],
+                    key[6],
+                    key[7],
+                    key[8],
+                    key[9],
+                    key[10],
+                    key[11],
+                    key[12],
+                    key[13],
+                    key[14],
+                    key[15]
                 )
                 .unwrap();
             }
             ConfigOption::AppsKey(key) => {
                 write!(
                     s,
-                    "apps_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
-                    key.0[0],
-                    key.0[1],
-                    key.0[2],
-                    key.0[3],
-                    key.0[4],
-                    key.0[5],
-                    key.0[6],
-                    key.0[7],
-                    key.0[8],
-                    key.0[9],
-                    key.0[10],
-                    key.0[11],
-                    key.0[12],
-                    key.0[13],
-                    key.0[14],
-                    key.0[15]
+                    "apps_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+                    key[0],
+                    key[1],
+                    key[2],
+                    key[3],
+                    key[4],
+                    key[5],
+                    key[6],
+                    key[7],
+                    key[8],
+                    key[9],
+                    key[10],
+                    key[11],
+                    key[12],
+                    key[13],
+                    key[14],
+                    key[15]
                 )
                 .unwrap();
             }

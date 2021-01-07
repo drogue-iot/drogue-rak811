@@ -64,6 +64,7 @@ where
                 } else {
                     if let Ok(msg) = core::str::from_utf8(&res[..rp]) {
                         log::info!("Partial res: {}", msg);
+                        log::info!("Partial bytes: {:?}", &res[..rp]);
                     }
                 }
             }
