@@ -5,8 +5,6 @@ use nom::do_parse;
 use nom::named;
 use nom::opt;
 use nom::tag;
-use nom::take;
-use nom::take_until;
 use nom::tuple;
 use nom::IResult;
 
@@ -42,29 +40,9 @@ fn atoi_u8(digits: &[u8]) -> Option<u8> {
     Some(num)
 }
 
-fn atoi_usize(digits: &[u8]) -> Option<usize> {
-    let mut num: usize = 0;
-    let len = digits.len();
-    for (i, digit) in digits.iter().enumerate() {
-        let digit = ascii_to_digit(*digit)? as usize;
-        let mut exp = 1;
-        for _ in 0..(len - i - 1) {
-            exp *= 10;
-        }
-        num += exp * digit;
-    }
-    Some(num)
-}
-
 fn parse_u8(input: &[u8]) -> IResult<&[u8], u8> {
     let (input, digits) = digit1(input)?;
     IResult::Ok((input, atoi_u8(digits).unwrap()))
-}
-
-fn parse_usize(input: &[u8]) -> IResult<&[u8], usize> {
-    let (input, digits) = digit1(input)?;
-    let num = atoi_usize(digits).unwrap();
-    IResult::Ok((input, num))
 }
 
 #[rustfmt::skip]

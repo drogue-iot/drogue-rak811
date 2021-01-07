@@ -1,11 +1,66 @@
-use crate::error::*;
-use embedded_hal::{serial::Read, serial::Write};
+use core::fmt::Write;
+use heapless::{consts, String};
 
 #[derive(Debug)]
 pub enum Command {
     QueryFirmwareInfo,
     SetBand(LoraRegion),
+    SetMode(LoraMode),
     GetBand,
+    Join(ConnectMode),
+    SetConfig(ConfigOption),
+}
+
+#[derive(Debug)]
+pub enum ConnectMode {
+    OTAA,
+    ABP,
+}
+
+#[derive(Debug)]
+#[repr(u8)]
+pub enum LoraMode {
+    WAN = 0,
+    P2P = 1,
+}
+
+#[derive(Debug)]
+pub struct DevAddr([u8; 4]);
+
+#[derive(Debug)]
+pub struct EUI([u8; 8]);
+
+#[derive(Debug)]
+pub struct AppKey([u8; 16]);
+
+#[derive(Debug)]
+pub struct NwksKey([u8; 16]);
+
+#[derive(Debug)]
+pub struct AppsKey([u8; 16]);
+
+#[derive(Debug)]
+pub enum ConfigOption {
+    DevAddr(DevAddr),
+    DevEui(EUI),
+    AppEui(EUI),
+    AppKey(AppKey),
+    NwksKey(NwksKey),
+    AppsKey(AppsKey),
+    /*
+    PwrLevel,
+    Adr,
+    Dr,
+    PublicNet,
+    RxDelay1,
+    Rx2,
+    ChList,
+    ChMask,
+    MaxChs,
+    JoinCnt,
+    Nbtrans,
+    Class,
+    Duty,*/
 }
 
 #[derive(Debug)]
@@ -36,28 +91,186 @@ pub enum LoraRegion {
     UNKNOWN,
 }
 
+pub type CommandBuffer = String<consts::U128>;
+
 impl Command {
-    pub fn write<W: Write<u8>>(&self, w: &mut W) -> Result<(), DriverError> {
+    pub fn buffer() -> CommandBuffer {
+        String::new()
+    }
+
+    pub fn encode(&self, s: &mut CommandBuffer) {
         match self {
             Command::QueryFirmwareInfo => {
-                write_str(w, "at+version")?;
+                write!(s, "at+version").unwrap();
             }
             Command::SetBand(region) => {
-                write_str(w, "at+band=")?;
-                write_str(w, region.as_str())?;
+                write!(s, "at+band=").unwrap();
+                region.encode(s);
             }
             Command::GetBand => {
-                write_str(w, "at+band")?;
+                write!(s, "at+band").unwrap();
+            }
+            Command::SetMode(mode) => {
+                write!(s, "at+mode=").unwrap();
+                mode.encode(s);
+            }
+            Command::Join(mode) => {
+                write!(s, "at+join=").unwrap();
+                mode.encode(s);
+            }
+            Command::SetConfig(opt) => {
+                write!(s, "at+set_config=").unwrap();
+                opt.encode(s);
             }
         }
-        write_str(w, "\r\n")?;
-        Ok(())
+    }
+}
+
+impl ConfigOption {
+    pub fn encode(&self, s: &mut CommandBuffer) {
+        match self {
+            ConfigOption::DevAddr(addr) => {
+                write!(
+                    s,
+                    "dev_addr:{}{}{}{}",
+                    addr.0[0], addr.0[1], addr.0[2], addr.0[3]
+                )
+                .unwrap();
+            }
+            ConfigOption::DevEui(eui) => {
+                write!(
+                    s,
+                    "dev_eui:{}{}{}{}{}{}{}{}",
+                    eui.0[0], eui.0[1], eui.0[2], eui.0[3], eui.0[4], eui.0[5], eui.0[6], eui.0[7]
+                )
+                .unwrap();
+            }
+            ConfigOption::AppEui(eui) => {
+                write!(
+                    s,
+                    "app_eui:{}{}{}{}{}{}{}{}",
+                    eui.0[0], eui.0[1], eui.0[2], eui.0[3], eui.0[4], eui.0[5], eui.0[6], eui.0[7]
+                )
+                .unwrap();
+            }
+            ConfigOption::AppKey(key) => {
+                write!(
+                    s,
+                    "app_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+                    key.0[0],
+                    key.0[1],
+                    key.0[2],
+                    key.0[3],
+                    key.0[4],
+                    key.0[5],
+                    key.0[6],
+                    key.0[7],
+                    key.0[8],
+                    key.0[9],
+                    key.0[10],
+                    key.0[11],
+                    key.0[12],
+                    key.0[13],
+                    key.0[14],
+                    key.0[15]
+                )
+                .unwrap();
+            }
+            ConfigOption::NwksKey(key) => {
+                write!(
+                    s,
+                    "nwks_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+                    key.0[0],
+                    key.0[1],
+                    key.0[2],
+                    key.0[3],
+                    key.0[4],
+                    key.0[5],
+                    key.0[6],
+                    key.0[7],
+                    key.0[8],
+                    key.0[9],
+                    key.0[10],
+                    key.0[11],
+                    key.0[12],
+                    key.0[13],
+                    key.0[14],
+                    key.0[15]
+                )
+                .unwrap();
+            }
+            ConfigOption::AppsKey(key) => {
+                write!(
+                    s,
+                    "apps_key:{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+                    key.0[0],
+                    key.0[1],
+                    key.0[2],
+                    key.0[3],
+                    key.0[4],
+                    key.0[5],
+                    key.0[6],
+                    key.0[7],
+                    key.0[8],
+                    key.0[9],
+                    key.0[10],
+                    key.0[11],
+                    key.0[12],
+                    key.0[13],
+                    key.0[14],
+                    key.0[15]
+                )
+                .unwrap();
+            }
+        }
+    }
+}
+
+impl ConnectMode {
+    pub fn encode(&self, s: &mut CommandBuffer) {
+        let val = match self {
+            ConnectMode::OTAA => "otaa",
+            ConnectMode::ABP => "abp",
+        };
+        s.push_str(val).unwrap();
+    }
+
+    pub fn parse(d: &[u8]) -> ConnectMode {
+        if let Ok(s) = core::str::from_utf8(d) {
+            match s {
+                "abp" => ConnectMode::ABP,
+                _ => ConnectMode::OTAA,
+            }
+        } else {
+            ConnectMode::OTAA
+        }
+    }
+}
+
+impl LoraMode {
+    pub fn encode(&self, s: &mut CommandBuffer) {
+        let val = match self {
+            LoraMode::WAN => "0",
+            LoraMode::P2P => "1",
+        };
+        s.push_str(val).unwrap();
+    }
+
+    pub fn parse(d: &[u8]) -> LoraMode {
+        if let Ok(s) = core::str::from_utf8(d) {
+            match s {
+                "1" => LoraMode::P2P,
+                _ => LoraMode::WAN,
+            }
+        } else {
+            LoraMode::WAN
+        }
     }
 }
 
 impl LoraRegion {
-    fn as_str(&self) -> &str {
-        match self {
+    pub fn encode(&self, s: &mut CommandBuffer) {
+        let val = match self {
             LoraRegion::EU868 => "EU868",
             LoraRegion::US915 => "US915",
             LoraRegion::AU915 => "AU915",
@@ -65,7 +278,8 @@ impl LoraRegion {
             LoraRegion::AS923 => "AS923",
             LoraRegion::IN865 => "IN865",
             LoraRegion::UNKNOWN => "UNKNOWN",
-        }
+        };
+        s.push_str(val).unwrap();
     }
 
     pub fn parse(d: &[u8]) -> LoraRegion {
@@ -83,13 +297,6 @@ impl LoraRegion {
             LoraRegion::UNKNOWN
         }
     }
-}
-
-fn write_str<W: Write<u8>>(w: &mut W, s: &str) -> Result<(), DriverError> {
-    for &b in s.as_bytes() {
-        nb::block!(w.write(b)).map_err(|_| DriverError::WriteError)?;
-    }
-    Ok(())
 }
 
 #[cfg(test)]

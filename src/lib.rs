@@ -1,6 +1,6 @@
 #![no_std]
 
-use embedded_hal::{digital::v2::OutputPin, serial::Read, serial::Write};
+use embedded_hal::{serial::Read, serial::Write};
 use nb;
 mod error;
 mod parser;
@@ -28,7 +28,13 @@ where
     }
 
     pub fn send(&mut self, command: Command) -> Result<Response, DriverError> {
-        command.write(&mut self.tx)?;
+        let mut s = Command::buffer();
+        command.encode(&mut s);
+        for b in s.as_bytes().iter() {
+            nb::block!(self.tx.write(*b)).map_err(|_| DriverError::WriteError)?;
+        }
+        nb::block!(self.tx.write(b'\r')).map_err(|_| DriverError::WriteError)?;
+        nb::block!(self.tx.write(b'\n')).map_err(|_| DriverError::WriteError)?;
 
         let response = self.recv()?;
         Ok(response)
