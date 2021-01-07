@@ -53,14 +53,39 @@ named!(
 
 #[rustfmt::skip]
 named!(
+    pub mode_info<Response>,
+    do_parse!(
+        opt!(crlf) >>
+        opt!(crlf) >>
+        tag!("Selected LoraWAN ") >>
+     //       1.0.2 Region: EU868 ") >>
+        major: parse_u8 >>
+        tag!(".") >>
+        minor: parse_u8 >>
+        tag!(".") >>
+        patch: parse_u8 >>
+        tag!(" Region: ") >>
+        region: lora_region >>
+        tag!(" ") >>
+        crlf >>
+        crlf >>
+        tag!("OK") >>
+        crlf >>
+        (
+            Response::Ok
+        )
+    )
+);
+
+#[rustfmt::skip]
+named!(
     pub ok<Response>,
     do_parse!(
-        tuple!(
-            opt!(crlf),
-            opt!(crlf),
-            tag!("OK"),
-            crlf
-        ) >>
+        opt!(crlf) >>
+        opt!(crlf) >>
+        tag!("OK") >>
+        crlf >>
+        crlf >>
         (
             Response::Ok
         )
@@ -87,6 +112,8 @@ named!(
 named!(
     pub firmware_info<Response>,
     do_parse!(
+        opt!(crlf) >>
+        opt!(crlf) >>
         tag!("OK") >>
         major: parse_u8 >>
         tag!(".") >>
@@ -140,6 +167,7 @@ named!(
         | error
         | firmware_info
         | lora_band
+        | mode_info
     )
 );
 

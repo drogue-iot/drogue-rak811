@@ -9,6 +9,14 @@ pub enum Command {
     GetBand,
     Join(ConnectMode),
     SetConfig(ConfigOption),
+    GetConfig(ConfigKey),
+    Reset(ResetMode),
+}
+
+#[derive(Debug)]
+pub enum ResetMode {
+    Restart,
+    Reload,
 }
 
 #[derive(Debug)]
@@ -40,6 +48,16 @@ pub struct NwksKey([u8; 16]);
 pub struct AppsKey([u8; 16]);
 
 #[derive(Debug)]
+pub enum ConfigKey {
+    DevAddr,
+    DevEui,
+    AppEui,
+    AppKey,
+    NwksKey,
+    AppsKey,
+}
+
+#[derive(Debug)]
 pub enum ConfigOption {
     DevAddr(DevAddr),
     DevEui(EUI),
@@ -65,6 +83,7 @@ pub enum ConfigOption {
 
 #[derive(Debug)]
 pub enum Response {
+    None,
     Ok,
     Error(i8),
     FirmwareInfo(FirmwareInfo),
@@ -121,6 +140,46 @@ impl Command {
             Command::SetConfig(opt) => {
                 write!(s, "at+set_config=").unwrap();
                 opt.encode(s);
+            }
+            Command::GetConfig(key) => {
+                write!(s, "at+get_config=").unwrap();
+                key.encode(s);
+            }
+            Command::Reset(mode) => {
+                write!(
+                    s,
+                    "at+reset={}",
+                    match mode {
+                        ResetMode::Restart => 0,
+                        ResetMode::Reload => 1,
+                    }
+                )
+                .unwrap();
+            }
+        }
+    }
+}
+
+impl ConfigKey {
+    pub fn encode(&self, s: &mut CommandBuffer) {
+        match self {
+            ConfigKey::DevAddr => {
+                s.push_str("dev_addr");
+            }
+            ConfigKey::DevEui => {
+                s.push_str("dev_eui");
+            }
+            ConfigKey::AppEui => {
+                s.push_str("app_eui");
+            }
+            ConfigKey::AppKey => {
+                s.push_str("app_key");
+            }
+            ConfigKey::NwksKey => {
+                s.push_str("nwks_key");
+            }
+            ConfigKey::AppsKey => {
+                s.push_str("apps_key");
             }
         }
     }

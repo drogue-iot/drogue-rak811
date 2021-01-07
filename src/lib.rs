@@ -30,6 +30,7 @@ where
     pub fn send(&mut self, command: Command) -> Result<Response, DriverError> {
         let mut s = Command::buffer();
         command.encode(&mut s);
+        log::info!("Sending command {}", s.as_str());
         for b in s.as_bytes().iter() {
             nb::block!(self.tx.write(*b)).map_err(|_| DriverError::WriteError)?;
         }
@@ -44,30 +45,29 @@ where
         let mut res = [0; 64];
         let mut rp = 0;
         loop {
-            let b = nb::block!(self.rx.read()).map_err(|_| DriverError::ReadError)?;
-            res[rp] = b;
-            rp += 1;
-            if b as char == '\n' {
-                break;
-            }
-        }
-
-        let mut ret = Err(DriverError::ReadError);
-        if rp > 0 {
-            if let Ok(msg) = core::str::from_utf8(&res[..rp]) {
-                log::trace!("Res: {}", msg);
-            }
-            match parser::parse(&res[..rp]) {
-                Ok((_remainder, response)) => {
-                    ret = Ok(response);
-                }
-                Err(e) => {
-                    log::info!("Error parse: {:?}", e);
+            let mut try_parse = false;
+            loop {
+                let b = nb::block!(self.rx.read()).map_err(|_| DriverError::ReadError)?;
+                res[rp] = b;
+                rp += 1;
+                if b as char == '\n' {
+                    try_parse = true;
+                    break;
                 }
             }
-        }
 
-        ret
+            if try_parse {
+                //log::info!("Res bytes: {:?}", &res[..rp]);
+
+                if let Ok((_remainder, response)) = parser::parse(&res[..rp]) {
+                    return Ok(response);
+                } else {
+                    if let Ok(msg) = core::str::from_utf8(&res[..rp]) {
+                        log::info!("Partial res: {}", msg);
+                    }
+                }
+            }
+        }
     }
 }
 
