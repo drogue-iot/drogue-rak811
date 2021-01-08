@@ -11,32 +11,40 @@ pub enum Command<'a> {
     SetConfig(ConfigOption<'a>),
     GetConfig(ConfigKey),
     Reset(ResetMode),
+    Send(QoS, Port, &'a [u8]),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
+pub enum QoS {
+    Unconfirmed,
+    Confirmed,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum ResetMode {
     Restart,
     Reload,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ConnectMode {
     OTAA,
     ABP,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum LoraMode {
     WAN = 0,
     P2P = 1,
 }
 
-type DevAddr = [u8; 4];
-type EUI = [u8; 8];
-type AppKey = [u8; 16];
-type NwksKey = [u8; 16];
-type AppsKey = [u8; 16];
+pub type Port = u8;
+pub type DevAddr = [u8; 4];
+pub type EUI = [u8; 8];
+pub type AppKey = [u8; 16];
+pub type NwksKey = [u8; 16];
+pub type AppsKey = [u8; 16];
 
 #[derive(Debug)]
 pub enum ConfigKey {
@@ -79,6 +87,23 @@ pub enum Response {
     Error(i8),
     FirmwareInfo(FirmwareInfo),
     LoraBand(LoraRegion),
+    Recv(EventCode, Port, usize),
+}
+
+#[derive(Debug, PartialEq)]
+#[repr(u8)]
+pub enum EventCode {
+    RecvData,
+    TxConfirmed,
+    TxUnconfirmed,
+    JoinedSuccess,
+    JoinedFailed,
+    TxTimeout,
+    Rx2Timeout,
+    DownlinkRepeated,
+    WakeUp,
+    P2PTxComplete,
+    Unknown,
 }
 
 /// Version information for the RAK811 board
@@ -147,7 +172,31 @@ impl<'a> Command<'a> {
                 )
                 .unwrap();
             }
+            Command::Send(qos, port, data) => {
+                write!(
+                    s,
+                    "at+send={},{},{}",
+                    match qos {
+                        QoS::Unconfirmed => 0,
+                        QoS::Confirmed => 1,
+                    },
+                    port,
+                    HexSlice(data),
+                )
+                .unwrap();
+            }
         }
+    }
+}
+
+struct HexSlice<'a>(&'a [u8]);
+
+impl<'a> core::fmt::Display for HexSlice<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::result::Result<(), core::fmt::Error> {
+        for b in self.0.iter() {
+            write!(f, "{:x}", b)?;
+        }
+        Ok(())
     }
 }
 
@@ -345,6 +394,24 @@ impl LoraRegion {
             }
         } else {
             LoraRegion::UNKNOWN
+        }
+    }
+}
+
+impl EventCode {
+    pub fn parse(d: u8) -> EventCode {
+        match d {
+            0 => EventCode::RecvData,
+            1 => EventCode::TxConfirmed,
+            2 => EventCode::TxUnconfirmed,
+            3 => EventCode::JoinedSuccess,
+            4 => EventCode::JoinedFailed,
+            5 => EventCode::TxTimeout,
+            6 => EventCode::Rx2Timeout,
+            7 => EventCode::DownlinkRepeated,
+            8 => EventCode::WakeUp,
+            9 => EventCode::P2PTxComplete,
+            _ => EventCode::Unknown,
         }
     }
 }

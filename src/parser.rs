@@ -8,7 +8,7 @@ use nom::tag;
 use nom::tuple;
 use nom::IResult;
 
-use super::{FirmwareInfo, LoraRegion, Response};
+use super::{EventCode, FirmwareInfo, LoraRegion, Response};
 
 fn ascii_to_digit(character: u8) -> Option<u8> {
     match character {
@@ -159,6 +159,23 @@ named!(
     )
 );
 
+#[rustfmt::skip]
+named!(
+    pub recv<Response>,
+    do_parse!(
+        tag!("at+recv=") >>
+        status: parse_u8 >>
+        char!(',') >>
+        port: parse_u8 >>
+        char!(',') >>
+        len: parse_u8 >>
+        crlf >>
+        (
+            Response::Recv(EventCode::parse(status), port, len as usize)
+        )
+    )
+);
+
 named!(
     pub parse<Response>,
     alt!(
@@ -167,6 +184,7 @@ named!(
         | firmware_info
         | lora_band
         | mode_info
+        | recv
     )
 );
 
