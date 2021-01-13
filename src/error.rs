@@ -4,5 +4,6 @@ use crate::protocol::Response;
 pub enum DriverError {
     WriteError,
     ReadError,
+    NotInitialized,
     UnexpectedResponse(Response),
 }

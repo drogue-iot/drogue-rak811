@@ -1,0 +1,27 @@
+[package]
+authors = ["Ulf Lilleengen <ulf.lilleengen@gmail.com>"]
+edition = "2018"
+readme = "README.md"
+name = "microbit-rak811"
+version = "0.1.0"
+
+[dependencies]
+cortex-m = "0.6.4"
+cortex-m-rt = { version = "0.6.11", features = ["device"] }
+cortex-m-rtic = "0.5.5"
+rtt-target = {version = "0.2.0", features = ["cortex-m"] }
+panic-halt = "0.2.0"
+# nrf52833-hal = { git = "https://github.com/lulf/nrf-hal", branch = "uarte-embedded-serial", features = ["rt"]}
+nrf52833-hal = { path = "../../../../nrf-hal/nrf52833-hal", features = ["rt"]}
+log = "0.4.11"
+rtt-logger = "0.1.0"
+nb = "1.0.0"
+embedded-hal = { version = "0.2.3", features = ["unproven"] }
+void = { version = "1.0.2", default-features = false }
+drogue-rak811 = { path = "../../" }
+heapless = "0.5.5"
+
+[[bin]]
+name = "microbit-rak811"
+test = false
+bench = false

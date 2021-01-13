@@ -7,10 +7,10 @@ pub enum Command<'a> {
     SetBand(LoraRegion),
     SetMode(LoraMode),
     GetBand,
+    Reset(ResetMode),
     Join(ConnectMode),
     SetConfig(ConfigOption<'a>),
     GetConfig(ConfigKey),
-    Reset(ResetMode),
     Send(QoS, Port, &'a [u8]),
     GetStatus,
 }
@@ -98,6 +98,7 @@ pub enum Response {
         rssi: i8,
         snr: u32,
     },
+    Initialized,
 }
 
 #[derive(Debug, PartialEq)]
@@ -125,7 +126,7 @@ pub struct FirmwareInfo {
     pub build: u8,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoraRegion {
     EU868,
     US915,

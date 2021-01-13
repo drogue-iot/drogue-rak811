@@ -214,6 +214,18 @@ named!(
 
 #[rustfmt::skip]
 named!(
+    pub welcome<Response>,
+    do_parse!(
+        tag!("Welcome to RAK811") >>
+        crlf >>
+        (
+            Response::Initialized
+        )
+    )
+);
+
+#[rustfmt::skip]
+named!(
     pub recv<Response>,
     do_parse!(
         tag!("at+recv=") >>
@@ -250,6 +262,7 @@ named!(
         | mode_info
         | recv
         | status
+        | welcome
     )
 );
 

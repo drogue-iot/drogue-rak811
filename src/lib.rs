@@ -1,5 +1,6 @@
 #![no_std]
 
+use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::{serial::Read, serial::Write};
 use nb;
 mod buffer;
@@ -15,10 +16,11 @@ pub use protocol::*;
 
 const RECV_BUFFER_LEN: usize = 256;
 
-pub struct Rak811Driver<W, R>
+pub struct Rak811Driver<W, R, RST>
 where
     W: Write<u8>,
     R: Read<u8>,
+    RST: OutputPin,
 {
     tx: W,
     rx: R,
@@ -26,21 +28,52 @@ where
     rxq: Queue<Response, consts::U4>,
     connect_mode: ConnectMode,
     lora_mode: LoraMode,
+    lora_band: LoraRegion,
+    rst: RST,
 }
 
-impl<W, R> Rak811Driver<W, R>
+impl<W, R, RST> Rak811Driver<W, R, RST>
 where
     W: Write<u8>,
     R: Read<u8>,
+    RST: OutputPin,
 {
-    pub fn new(tx: W, rx: R) -> Rak811Driver<W, R> {
-        Rak811Driver {
+    pub fn new(tx: W, rx: R, rst: RST) -> Result<Rak811Driver<W, R, RST>, DriverError> {
+        let mut driver = Rak811Driver {
             tx,
             rx,
+            rst,
             parse_buffer: Buffer::new(),
             connect_mode: ConnectMode::OTAA,
             lora_mode: LoraMode::WAN,
+            lora_band: LoraRegion::EU868,
             rxq: Queue::new(),
+        };
+
+        driver.initialize()?;
+        Ok(driver)
+    }
+
+    pub fn initialize(&mut self) -> Result<(), DriverError> {
+        self.rst.set_low();
+        let response = self.recv_response()?;
+        match response {
+            Response::Initialized => Ok(()),
+            r => Err(DriverError::NotInitialized),
+        }
+    }
+
+    pub fn reset(&mut self, mode: ResetMode) -> Result<(), DriverError> {
+        let response = self.send_command(Command::Reset(mode))?;
+        match response {
+            Response::Ok => {
+                let response = self.recv_response()?;
+                match response {
+                    Response::Initialized => Ok(()),
+                    _ => Err(DriverError::NotInitialized),
+                }
+            }
+            r => Err(DriverError::UnexpectedResponse(r)),
         }
     }
 
@@ -51,13 +84,19 @@ where
             Response::Ok => {
                 let response = self.recv_response()?;
                 match response {
-                    Response::Recv(EventCode::JoinedSuccess, _, len, _) => {
-                        log::info!("RECV with len {}", len);
-                        Ok(())
-                    }
+                    Response::Recv(EventCode::JoinedSuccess, _, len, _) => Ok(()),
                     r => Err(DriverError::UnexpectedResponse(r)),
                 }
             }
+            r => Err(DriverError::UnexpectedResponse(r)),
+        }
+    }
+
+    pub fn set_band(&mut self, band: LoraRegion) -> Result<(), DriverError> {
+        self.lora_band = band;
+        let response = self.send_command(Command::SetBand(band))?;
+        match response {
+            Response::Ok => Ok(()),
             r => Err(DriverError::UnexpectedResponse(r)),
         }
     }
@@ -167,7 +206,7 @@ where
         let result = self.parse_buffer.parse();
         if let Ok(response) = result {
             if !matches!(response, Response::None) {
-                log::info!("Got response: {:?}", response);
+                log::debug!("Got response: {:?}", response);
                 self.rxq
                     .enqueue(response)
                     .map_err(|_| DriverError::ReadError)?;
@@ -175,30 +214,6 @@ where
         }
         Ok(())
     }
-    /*
-
-
-            if try_parse {
-                //log::info!("Res bytes: {:?}", &res[..rp]);
-
-                if let Ok((_remainder, response)) = parser::parse(&res[..rp]) {
-                    self.rxq
-                        .enqueue(response)
-                        .map_err(|_| DriverError::ReadError)?;
-                    return Ok(());
-                } else {
-                    if let Ok(msg) = core::str::from_utf8(&res[..rp]) {
-                        log::info!("Partial res: {}", msg);
-                        log::info!("Partial bytes: {:?}", &res[..rp]);
-                        if !block {
-                            return OK((
-
-                    }
-                }
-            }
-        }
-    }
-    */
 
     fn recv_response(&mut self) -> Result<Response, DriverError> {
         loop {
@@ -230,7 +245,7 @@ where
     pub fn send_command(&mut self, command: Command) -> Result<Response, DriverError> {
         let mut s = Command::buffer();
         command.encode(&mut s);
-        log::info!("Sending command {}", s.as_str());
+        log::debug!("Sending command {}", s.as_str());
         self.do_write(s.as_bytes())?;
         self.do_write("\r\n".as_bytes())?;
 
