@@ -5,7 +5,7 @@ use nom::do_parse;
 use nom::named;
 use nom::opt;
 use nom::tag;
-use nom::tuple;
+use nom::take;
 use nom::IResult;
 
 use super::{EventCode, FirmwareInfo, LoraRegion, Response};
@@ -24,6 +24,20 @@ fn ascii_to_digit(character: u8) -> Option<u8> {
         b'9' => Some(9),
         _ => None,
     }
+}
+
+fn atoi_u32(digits: &[u8]) -> Option<u32> {
+    let mut num: u32 = 0;
+    let len = digits.len();
+    for (i, digit) in digits.iter().enumerate() {
+        let digit = ascii_to_digit(*digit as u8)? as u32;
+        let mut exp: u32 = 1;
+        for _ in 0..(len - i - 1) {
+            exp *= 10;
+        }
+        num += exp * digit;
+    }
+    Some(num)
 }
 
 fn atoi_u8(digits: &[u8]) -> Option<u8> {
@@ -45,6 +59,11 @@ fn parse_u8(input: &[u8]) -> IResult<&[u8], u8> {
     IResult::Ok((input, atoi_u8(digits).unwrap()))
 }
 
+fn parse_u32(input: &[u8]) -> IResult<&[u8], u32> {
+    let (input, digits) = digit1(input)?;
+    IResult::Ok((input, atoi_u32(digits).unwrap()))
+}
+
 #[rustfmt::skip]
 named!(
     crlf,
@@ -58,7 +77,6 @@ named!(
         opt!(crlf) >>
         opt!(crlf) >>
         tag!("Selected LoraWAN ") >>
-     //       1.0.2 Region: EU868 ") >>
         major: parse_u8 >>
         tag!(".") >>
         minor: parse_u8 >>
@@ -161,6 +179,41 @@ named!(
 
 #[rustfmt::skip]
 named!(
+    pub status<Response>,
+    do_parse!(
+        tag!("OK") >>
+        tx_ok: parse_u8 >>
+        char!(',') >>
+        tx_err: parse_u8 >>
+        char!(',') >>
+        rx_ok: parse_u8 >>
+        char!(',') >>
+        rx_timeout: parse_u8 >>
+        char!(',') >>
+        rx_err: parse_u8 >>
+        char!(',') >>
+        rssi_sign: opt!(char!('-')) >>
+        rssi: parse_u8 >>
+        char!(',') >>
+        snr: parse_u32 >>
+        crlf >>
+        ( {
+            Response::Status {
+                tx_ok,
+                tx_err,
+                rx_ok,
+                rx_timeout,
+                rx_err,
+                rssi: rssi_sign.map(|s| if s == '-' { - (rssi as i8) } else {rssi as i8}).unwrap_or(rssi as i8),
+                snr,
+            }
+          }
+        )
+    )
+);
+
+#[rustfmt::skip]
+named!(
     pub recv<Response>,
     do_parse!(
         tag!("at+recv=") >>
@@ -169,9 +222,20 @@ named!(
         port: parse_u8 >>
         char!(',') >>
         len: parse_u8 >>
+        data: take!(len) >>
         crlf >>
-        (
-            Response::Recv(EventCode::parse(status), port, len as usize)
+        ( {
+            let rx = if len > 0 {
+                let mut buf: [u8; crate::RECV_BUFFER_LEN] = [0; crate::RECV_BUFFER_LEN];
+                for (i, b) in data.iter().enumerate() {
+                    buf[i] = *b;
+                }
+                Some(buf)
+            } else {
+                None
+            };
+            Response::Recv(EventCode::parse(status), port, len as usize, rx)
+          }
         )
     )
 );
@@ -185,6 +249,7 @@ named!(
         | lora_band
         | mode_info
         | recv
+        | status
     )
 );
 

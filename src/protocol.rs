@@ -12,6 +12,7 @@ pub enum Command<'a> {
     GetConfig(ConfigKey),
     Reset(ResetMode),
     Send(QoS, Port, &'a [u8]),
+    GetStatus,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -87,7 +88,16 @@ pub enum Response {
     Error(i8),
     FirmwareInfo(FirmwareInfo),
     LoraBand(LoraRegion),
-    Recv(EventCode, Port, usize),
+    Recv(EventCode, Port, usize, Option<[u8; crate::RECV_BUFFER_LEN]>),
+    Status {
+        tx_ok: u8,
+        tx_err: u8,
+        rx_ok: u8,
+        rx_timeout: u8,
+        rx_err: u8,
+        rssi: i8,
+        snr: u32,
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -185,6 +195,9 @@ impl<'a> Command<'a> {
                 )
                 .unwrap();
             }
+            Command::GetStatus => {
+                write!(s, "at+status").unwrap();
+            }
         }
     }
 }
@@ -204,22 +217,22 @@ impl ConfigKey {
     pub fn encode(&self, s: &mut CommandBuffer) {
         match self {
             ConfigKey::DevAddr => {
-                s.push_str("dev_addr");
+                s.push_str("dev_addr").unwrap();
             }
             ConfigKey::DevEui => {
-                s.push_str("dev_eui");
+                s.push_str("dev_eui").unwrap();
             }
             ConfigKey::AppEui => {
-                s.push_str("app_eui");
+                s.push_str("app_eui").unwrap();
             }
             ConfigKey::AppKey => {
-                s.push_str("app_key");
+                s.push_str("app_key").unwrap();
             }
             ConfigKey::NwksKey => {
-                s.push_str("nwks_key");
+                s.push_str("nwks_key").unwrap();
             }
             ConfigKey::AppsKey => {
-                s.push_str("apps_key");
+                s.push_str("apps_key").unwrap();
             }
         }
     }
