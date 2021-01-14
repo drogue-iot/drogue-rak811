@@ -3,7 +3,6 @@
 
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::{serial::Read, serial::Write};
-use nb;
 mod buffer;
 mod error;
 mod parser;
@@ -59,12 +58,12 @@ where
 
     /// Initialize the driver. This will cause the RAK811 module to be reset.
     pub fn initialize(&mut self) -> Result<(), DriverError> {
-        self.rst.set_high();
-        self.rst.set_low();
+        self.rst.set_high().ok();
+        self.rst.set_low().ok();
         let response = self.recv_response()?;
         match response {
             Response::Initialized => Ok(()),
-            r => Err(DriverError::NotInitialized),
+            _ => Err(DriverError::NotInitialized),
         }
     }
 
@@ -92,7 +91,7 @@ where
             Response::Ok => {
                 let response = self.recv_response()?;
                 match response {
-                    Response::Recv(EventCode::JoinedSuccess, _, len, _) => Ok(()),
+                    Response::Recv(EventCode::JoinedSuccess, _, _, _) => Ok(()),
                     r => Err(DriverError::UnexpectedResponse(r)),
                 }
             }
@@ -235,13 +234,12 @@ where
     fn recv_response(&mut self) -> Result<Response, DriverError> {
         loop {
             // Run processing to increase likelyhood we have something to parse.
-            for i in 0..1000 {
+            for _ in 0..1000 {
                 self.process()?;
             }
             self.digest()?;
-            match self.rxq.dequeue() {
-                Some(response) => return Ok(response),
-                None => {}
+            if let Some(response) = self.rxq.dequeue() {
+                return Ok(response);
             }
         }
     }
@@ -266,7 +264,7 @@ where
         command.encode(&mut s);
         log::debug!("Sending command {}", s.as_str());
         self.do_write(s.as_bytes())?;
-        self.do_write("\r\n".as_bytes())?;
+        self.do_write(b"\r\n")?;
 
         let response = self.recv_response()?;
         Ok(response)

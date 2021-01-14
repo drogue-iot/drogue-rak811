@@ -81,6 +81,7 @@ pub enum ConfigOption<'a> {
     Duty,*/
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Response {
     None,
