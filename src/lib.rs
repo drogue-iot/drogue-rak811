@@ -1,4 +1,5 @@
 #![no_std]
+//! Driver for RAK811 AT-command firmware over UART.
 
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::{serial::Read, serial::Write};
@@ -38,6 +39,8 @@ where
     R: Read<u8>,
     RST: OutputPin,
 {
+    /// Create a new instance of the driver. The driver will trigger a reset of the module
+    /// and expect a response from the firmware.
     pub fn new(tx: W, rx: R, rst: RST) -> Result<Rak811Driver<W, R, RST>, DriverError> {
         let mut driver = Rak811Driver {
             tx,
@@ -54,7 +57,9 @@ where
         Ok(driver)
     }
 
+    /// Initialize the driver. This will cause the RAK811 module to be reset.
     pub fn initialize(&mut self) -> Result<(), DriverError> {
+        self.rst.set_high();
         self.rst.set_low();
         let response = self.recv_response()?;
         match response {
@@ -63,6 +68,8 @@ where
         }
     }
 
+    /// Send reset command to lora module. Depending on the mode, this will restart
+    /// the module or reload its configuration from EEPROM.
     pub fn reset(&mut self, mode: ResetMode) -> Result<(), DriverError> {
         let response = self.send_command(Command::Reset(mode))?;
         match response {
@@ -77,6 +84,7 @@ where
         }
     }
 
+    /// Join a LoRa Network using the specified mode.
     pub fn join(&mut self, mode: ConnectMode) -> Result<(), DriverError> {
         self.connect_mode = mode;
         let response = self.send_command(Command::Join(mode))?;
@@ -92,6 +100,7 @@ where
         }
     }
 
+    /// Set the frequency band based on the region.
     pub fn set_band(&mut self, band: LoraRegion) -> Result<(), DriverError> {
         self.lora_band = band;
         let response = self.send_command(Command::SetBand(band))?;
@@ -101,6 +110,7 @@ where
         }
     }
 
+    /// Set the mode of operation, peer to peer or network mode.
     pub fn set_mode(&mut self, mode: LoraMode) -> Result<(), DriverError> {
         self.lora_mode = mode;
         let response = self.send_command(Command::SetMode(mode))?;
@@ -140,6 +150,7 @@ where
         }
     }
 
+    /// Transmit data using the specified confirmation mode and given port.
     pub fn send(&mut self, qos: QoS, port: Port, data: &[u8]) -> Result<(), DriverError> {
         let response = self.send_command(Command::Send(qos, port, data))?;
         match response {
@@ -158,6 +169,8 @@ where
         }
     }
 
+    /// Poll for any received data and copy it to the provided buffer. If data have been received,
+    /// the length of the data is returned.
     pub fn try_recv(&mut self, port: Port, rx_buf: &mut [u8]) -> Result<usize, DriverError> {
         self.digest()?;
         let mut tries = self.rxq.len();
@@ -185,6 +198,8 @@ where
         Ok(0)
     }
 
+    /// Attempt to read data from UART and store it in the parse buffer. This should
+    /// be invoked whenever data should be read.
     pub fn process(&mut self) -> Result<(), DriverError> {
         loop {
             match self.rx.read() {
@@ -202,6 +217,7 @@ where
         Ok(())
     }
 
+    /// Attempt to parse the internal buffer and enqueue any response data found.
     pub fn digest(&mut self) -> Result<(), DriverError> {
         let result = self.parse_buffer.parse();
         if let Ok(response) = result {
@@ -215,8 +231,10 @@ where
         Ok(())
     }
 
+    // Block until a response is received.
     fn recv_response(&mut self) -> Result<Response, DriverError> {
         loop {
+            // Run processing to increase likelyhood we have something to parse.
             for i in 0..1000 {
                 self.process()?;
             }
@@ -242,6 +260,7 @@ where
         Ok(())
     }
 
+    /// Send an AT command to the lora module and await a response.
     pub fn send_command(&mut self, command: Command) -> Result<Response, DriverError> {
         let mut s = Command::buffer();
         command.encode(&mut s);
