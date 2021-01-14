@@ -1,6 +1,6 @@
 [package]
 name = "drogue-rak811"
-version = "0.3.2"
+version = "0.1.0"
 authors = ["Ulf Lilleengen <lulf@redhat.com>"]
 edition = "2018"
 license = "Apache-2.0"
