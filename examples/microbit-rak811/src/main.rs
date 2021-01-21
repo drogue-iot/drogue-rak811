@@ -207,15 +207,24 @@ fn main() -> ! {
 
     log::info!("Driver initialized");
 
-    let btn = port0.p0_14.into_pullup_input().degrade();
-
     let gpiote = Gpiote::new(device.GPIOTE);
-    let button: Button = gpiote.configure_channel(Channel::Channel0, btn, Edge::Falling);
+    let button_fwd: Button = gpiote.configure_channel(
+        Channel::Channel0,
+        port0.p0_14.into_pullup_input().degrade(),
+        Edge::Falling,
+    );
+    let button_back: Button = gpiote.configure_channel(
+        Channel::Channel1,
+        port0.p0_23.into_pullup_input().degrade(),
+        Edge::Falling,
+    );
 
     let device = LoraDevice {
-        button: ActorContext::new(button),
+        btn_fwd: ActorContext::new(button_fwd),
+        btn_back: ActorContext::new(button_back),
         gpiote: InterruptContext::new(gpiote, hal::pac::Interrupt::GPIOTE),
-        gpiote_to_button: GpioteToChannel::new(),
+        gpiote_to_fwd: GpioteToChannel::new(),
+        gpiote_to_back: GpioteToChannel::new(),
     };
 
     device!( LoraDevice = device; 1024 );

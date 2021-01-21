@@ -8,19 +8,25 @@ pub type Button = GpioteChannel<Pin<Input<PullUp>>>;
 
 pub struct LoraDevice {
     pub gpiote: InterruptContext<Gpiote>,
-    pub button: ActorContext<Button>,
-    pub gpiote_to_button: GpioteToChannel,
+    pub btn_fwd: ActorContext<Button>,
+    pub btn_back: ActorContext<Button>,
+    pub gpiote_to_fwd: GpioteToChannel,
+    pub gpiote_to_back: GpioteToChannel,
 }
 
 impl Device for LoraDevice {
     fn start(&'static mut self, supervisor: &mut Supervisor) {
         let gpiote_addr = self.gpiote.start(supervisor);
-        let button_addr = self.button.start(supervisor);
-        log::info!("Start invoked");
-        self.gpiote_to_button.set_address(button_addr);
-        gpiote_addr.notify(AddSink {
-            sink: &self.gpiote_to_button,
-        });
+        let fwd_addr = self.btn_fwd.start(supervisor);
+        let back_addr = self.btn_back.start(supervisor);
+
+        self.gpiote_to_fwd.set_address(fwd_addr);
+        self.gpiote_to_back.set_address(back_addr);
+
+        log::info!("Address set, notifying..");
+        gpiote_addr.notify(AddSink::new(&self.gpiote_to_fwd));
+        gpiote_addr.notify(AddSink::new(&self.gpiote_to_back));
+        log::info!("Notified...");
     }
 }
 

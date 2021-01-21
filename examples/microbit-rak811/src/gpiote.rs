@@ -8,11 +8,9 @@ use hal::gpiote::GpioteInputPin;
 
 const NUM_CHANNELS: usize = 4;
 
-pub struct MultiSink {}
-
 pub struct Gpiote {
     gpiote: hal::gpiote::Gpiote,
-    subscribers: Vec<&'static dyn Sink<GpioteEvent>, consts::U4>,
+    sink: MultiSink<GpioteEvent, consts::U4>,
 }
 
 pub struct GpioteChannel<P: GpioteInputPin> {
@@ -34,7 +32,7 @@ impl Gpiote {
         let gpiote = hal::gpiote::Gpiote::new(gpiote);
         Self {
             gpiote,
-            subscribers: Vec::<_, consts::U4>::new(),
+            sink: MultiSink::<_, consts::U4>::new(),
         }
     }
 
@@ -72,22 +70,19 @@ impl<P: GpioteInputPin> GpioteChannel<P> {
 
 impl<P: GpioteInputPin> NotificationHandler<GpioteEvent> for GpioteChannel<P> {
     fn on_notification(&'static mut self, event: GpioteEvent) -> Completion {
-        log::info!("Channel {:?} notified!", self.channel);
+        match event {
+            GpioteEvent(c) if c == self.channel => {
+                log::info!("Channel {:?} notified!", self.channel);
+            }
+            _ => {}
+        }
         Completion::immediate()
     }
 }
 
-pub struct AddSink<SINK: 'static + Sink<GpioteEvent>> {
-    pub sink: &'static SINK,
-}
-
-impl<SINK: Sink<GpioteEvent>> NotificationHandler<AddSink<SINK>> for Gpiote {
-    fn on_notification(&'static mut self, channel: AddSink<SINK>) -> Completion {
-        self.subscribers.push(channel.sink);
-        log::info!(
-            "New channel.. we have {} subscribers",
-            self.subscribers.len()
-        );
+impl NotificationHandler<AddSink<GpioteEvent>> for Gpiote {
+    fn on_notification(&'static mut self, channel: AddSink<GpioteEvent>) -> Completion {
+        self.sink.on_notification(channel);
         Completion::immediate()
     }
 }
@@ -95,27 +90,19 @@ impl<SINK: Sink<GpioteEvent>> NotificationHandler<AddSink<SINK>> for Gpiote {
 impl Interrupt for Gpiote {
     fn on_interrupt(&mut self) {
         if self.gpiote.channel0().is_event_triggered() {
-            for chan in self.subscribers.iter() {
-                chan.notify(GpioteEvent(Channel::Channel0))
-            }
+            self.sink.notify(GpioteEvent(Channel::Channel0));
         }
 
         if self.gpiote.channel1().is_event_triggered() {
-            self.subscribers
-                .iter()
-                .map(|chan| chan.notify(GpioteEvent(Channel::Channel1)));
+            self.sink.notify(GpioteEvent(Channel::Channel1));
         }
 
         if self.gpiote.channel2().is_event_triggered() {
-            self.subscribers
-                .iter()
-                .map(|chan| chan.notify(GpioteEvent(Channel::Channel2)));
+            self.sink.notify(GpioteEvent(Channel::Channel2));
         }
 
         if self.gpiote.channel3().is_event_triggered() {
-            self.subscribers
-                .iter()
-                .map(|chan| chan.notify(GpioteEvent(Channel::Channel3)));
+            self.sink.notify(GpioteEvent(Channel::Channel3));
         }
         self.gpiote.reset_events();
     }
