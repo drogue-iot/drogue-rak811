@@ -218,6 +218,18 @@ named!(
     do_parse!(
         tag!("Welcome to RAK811") >>
         crlf >>
+        crlf >>
+        tag!("Selected LoraWAN ") >>
+        major: parse_u8 >>
+        tag!(".") >>
+        minor: parse_u8 >>
+        tag!(".") >>
+        patch: parse_u8 >>
+        tag!(" Region: ") >>
+        region: lora_region >>
+        tag!(" ") >>
+        crlf >>
+        crlf >>
         (
             Response::Initialized
         )
