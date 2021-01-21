@@ -18,7 +18,8 @@ rtt-logger = "0.1.0"
 nb = "1.0.0"
 embedded-hal = { version = "0.2.3", features = ["unproven"] }
 void = { version = "1.0.2", default-features = false }
-drogue-rak811 = { path = "../../" }
+#drogue-rak811 = { path = "../../" }
+drogue-device = { path = "../../../drogue-device" }
 heapless = "0.5.5"
 
 [[bin]]

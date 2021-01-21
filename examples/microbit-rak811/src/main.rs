@@ -2,24 +2,34 @@
 #![no_main]
 #![no_std]
 
+mod device;
+mod gpiote;
+
 use panic_halt as _;
 
 use core::sync::atomic::{compiler_fence, Ordering};
+use cortex_m_rt::{entry, exception};
+use drogue_device::prelude::*;
 use embedded_hal::digital::v2::OutputPin;
 use log::LevelFilter;
-use rtic::app;
 use rtt_logger::RTTLogger;
 use rtt_target::rtt_init_print;
 
 use nrf52833_hal as hal;
 
-use drogue_rak811 as rak811;
+// use drogue_rak811 as rak811;
+use crate::device::*;
+use crate::gpiote::*;
+
+/*
 use hal::gpio::{Level, Output, Pin, PushPull};
 use hal::pac::UARTE0;
 use hal::uarte::*;
+*/
 
-static LOGGER: RTTLogger = RTTLogger::new(LevelFilter::Info);
+static LOGGER: RTTLogger = RTTLogger::new(LevelFilter::Trace);
 
+/*
 #[app(device = crate::hal::pac, peripherals = true)]
 const APP: () = {
     struct Resources {
@@ -34,7 +44,7 @@ const APP: () = {
     fn init(ctx: init::Context) -> init::LateResources {
         rtt_init_print!();
         log::set_logger(&LOGGER).unwrap();
-        log::set_max_level(log::LevelFilter::Info);
+        log::set_max_level(log::LevelFilter::Trace);
 
         let port0 = hal::gpio::p0::Parts::new(ctx.device.P0);
         let port1 = hal::gpio::p1::Parts::new(ctx.device.P1);
@@ -87,7 +97,7 @@ const APP: () = {
 
         // TODO: Set the following settings to values provided by your network.
         driver
-            .set_device_eui(&[0x00, 0xBB, 0x7C, 0x95, 0xAD, 0xB5, 0x30, 0xB9])
+            .set_device_eui(&[0xFF, 0xFE, 0xDE, 0xAD, 0xC0, 0xDE, 0xFF, 0xFF])
             .map_err(|e| log::error!("ERROR: {:?}", e))
             .unwrap();
 
@@ -110,16 +120,103 @@ const APP: () = {
             .join(rak811::ConnectMode::OTAA)
             .map_err(|e| log::error!("ERROR: {:?}", e))
             .unwrap();
+        log::info!("Joined network!");
 
-        log::info!("Sending data");
-        driver
-            .send(rak811::QoS::Confirmed, 1, b"hello")
-            .map_err(|e| log::error!("ERROR: {:?}", e))
-            .unwrap();
-
-        log::info!("Data sent!");
+        let mut data = [0; 256];
         loop {
-            cortex_m::asm::nop();
+            log::info!("Processing...");
+            let mut cnt: u64 = 0;
+            while cnt < 10000000 {
+                cnt += 1;
+                driver
+                    .process()
+                    .map_err(|e| log::error!("ERROR: {:?}", e))
+                    .ok();
+
+                compiler_fence(Ordering::SeqCst);
+            }
+            compiler_fence(Ordering::SeqCst);
+
+            log::info!("Done processing... calling recv");
+            match driver.try_recv(1, &mut data) {
+                Ok(n) if n > 0 => log::info!("Received data: {:?}", &data[0..n]),
+                Ok(_) => {}
+                Err(e) => log::error!("RECV ERROR: {:?}", e),
+            }
+            log::info!("Done with recv");
+
+            driver
+                .send_command(rak811::Command::GetStatus)
+                .map_err(|e| log::error!("ERROR: {:?}", e))
+                .map(|r| log::info!("Status: {:?}", r));
+
+            log::info!("Sending data");
+            driver
+                .send(rak811::QoS::Confirmed, 1, b"U")
+                .map_err(|e| log::error!("ERROR: {:?}", e))
+                .ok();
+
+            log::info!("Data sent!");
         }
     }
 };
+*/
+
+#[entry]
+fn main() -> ! {
+    rtt_init_print!();
+    log::set_logger(&LOGGER).unwrap();
+    log::set_max_level(log::LevelFilter::Trace);
+    log::info!("Init");
+
+    let mut device = hal::pac::Peripherals::take().unwrap();
+
+    log::info!("initializing");
+
+    let port0 = hal::gpio::p0::Parts::new(device.P0);
+    let port1 = hal::gpio::p1::Parts::new(device.P1);
+
+    let clocks = hal::clocks::Clocks::new(device.CLOCK).enable_ext_hfosc();
+    let _clocks = clocks.start_lfclk();
+
+    /*
+        let uarte = Uarte::new(
+            ctx.device.UARTE0,
+            Pins {
+                txd: port0.p0_01.into_push_pull_output(Level::High).degrade(),
+                rxd: port0.p0_13.into_floating_input().degrade(),
+                cts: None,
+                rts: None,
+            },
+            Parity::EXCLUDED,
+            Baudrate::BAUD115200,
+        );
+
+        let (uarte_tx, uarte_rx) = uarte
+            .split(ctx.resources.tx_buf, ctx.resources.rx_buf)
+            .unwrap();
+    */
+
+    /*
+    let driver = rak811::Rak811Driver::new(
+        uarte_tx,
+        uarte_rx,
+        port1.p1_02.into_push_pull_output(Level::High).degrade(),
+    )
+    .unwrap();*/
+
+    log::info!("Driver initialized");
+
+    let btn = port0.p0_14.into_pullup_input().degrade();
+
+    let gpiote = Gpiote::new(device.GPIOTE);
+    let button: Button = gpiote.configure_channel(Channel::Channel0, btn, Edge::Falling);
+
+    let device = LoraDevice {
+        button: ActorContext::new(button),
+        gpiote: InterruptContext::new(gpiote, hal::pac::Interrupt::GPIOTE),
+        gpiote_to_button: GpioteToChannel::new(),
+    };
+
+    device!( LoraDevice = device; 1024 );
+}
