@@ -50,10 +50,10 @@
 //!To join the network and send packets:
 //!
 //!```rust
-//!driver.join(rak811::ConnectMode::OTAA).unwrap();
+//!driver.join(lora::ConnectMode::OTAA).unwrap();
 //!
 //!// Port number can be between 1 and 255
-//!driver.send(rak811::QoS::Confirmed, 1, b"hello!").unwrap();
+//!driver.send(lora::QoS::Confirmed, 1, b"hello!").unwrap();
 //!```
 
 use embedded_hal::digital::v2::OutputPin;
@@ -64,6 +64,7 @@ mod parser;
 mod protocol;
 
 use buffer::*;
+pub use drogue_lora::*;
 pub use error::*;
 use heapless::consts;
 use heapless::spsc::Queue;

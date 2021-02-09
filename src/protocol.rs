@@ -1,5 +1,16 @@
 use core::fmt::Write;
+use drogue_lora::*;
 use heapless::{consts, String};
+
+#[derive(Debug)]
+pub enum ConfigKey {
+    DevAddr,
+    DevEui,
+    AppEui,
+    AppKey,
+    NwksKey,
+    AppsKey,
+}
 
 #[derive(Debug)]
 pub enum Command<'a> {
@@ -13,48 +24,6 @@ pub enum Command<'a> {
     GetConfig(ConfigKey),
     Send(QoS, Port, &'a [u8]),
     GetStatus,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum QoS {
-    Unconfirmed,
-    Confirmed,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ResetMode {
-    Restart,
-    Reload,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ConnectMode {
-    OTAA,
-    ABP,
-}
-
-#[derive(Debug, Clone, Copy)]
-#[repr(u8)]
-pub enum LoraMode {
-    WAN = 0,
-    P2P = 1,
-}
-
-pub type Port = u8;
-pub type DevAddr = [u8; 4];
-pub type EUI = [u8; 8];
-pub type AppKey = [u8; 16];
-pub type NwksKey = [u8; 16];
-pub type AppsKey = [u8; 16];
-
-#[derive(Debug)]
-pub enum ConfigKey {
-    DevAddr,
-    DevEui,
-    AppEui,
-    AppKey,
-    NwksKey,
-    AppsKey,
 }
 
 #[derive(Debug)]
@@ -125,17 +94,6 @@ pub struct FirmwareInfo {
     pub minor: u8,
     pub patch: u8,
     pub build: u8,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum LoraRegion {
-    EU868,
-    US915,
-    AU915,
-    KR920,
-    AS923,
-    IN865,
-    UNKNOWN,
 }
 
 pub type CommandBuffer = String<consts::U128>;
@@ -340,16 +298,26 @@ impl<'a> ConfigOption<'a> {
     }
 }
 
-impl ConnectMode {
-    pub fn encode(&self, s: &mut CommandBuffer) {
+pub trait Encoder {
+    fn encode(&self, s: &mut CommandBuffer);
+}
+
+pub trait Decoder {
+    fn decode(d: &[u8]) -> Self;
+}
+
+impl Encoder for ConnectMode {
+    fn encode(&self, s: &mut CommandBuffer) {
         let val = match self {
             ConnectMode::OTAA => "otaa",
             ConnectMode::ABP => "abp",
         };
         s.push_str(val).unwrap();
     }
+}
 
-    pub fn parse(d: &[u8]) -> ConnectMode {
+impl Decoder for ConnectMode {
+    fn decode(d: &[u8]) -> ConnectMode {
         if let Ok(s) = core::str::from_utf8(d) {
             match s {
                 "abp" => ConnectMode::ABP,
@@ -361,16 +329,18 @@ impl ConnectMode {
     }
 }
 
-impl LoraMode {
-    pub fn encode(&self, s: &mut CommandBuffer) {
+impl Encoder for LoraMode {
+    fn encode(&self, s: &mut CommandBuffer) {
         let val = match self {
             LoraMode::WAN => "0",
             LoraMode::P2P => "1",
         };
         s.push_str(val).unwrap();
     }
+}
 
-    pub fn parse(d: &[u8]) -> LoraMode {
+impl Decoder for LoraMode {
+    fn decode(d: &[u8]) -> LoraMode {
         if let Ok(s) = core::str::from_utf8(d) {
             match s {
                 "1" => LoraMode::P2P,
@@ -382,8 +352,8 @@ impl LoraMode {
     }
 }
 
-impl LoraRegion {
-    pub fn encode(&self, s: &mut CommandBuffer) {
+impl Encoder for LoraRegion {
+    fn encode(&self, s: &mut CommandBuffer) {
         let val = match self {
             LoraRegion::EU868 => "EU868",
             LoraRegion::US915 => "US915",
@@ -395,8 +365,10 @@ impl LoraRegion {
         };
         s.push_str(val).unwrap();
     }
+}
 
-    pub fn parse(d: &[u8]) -> LoraRegion {
+impl Decoder for LoraRegion {
+    fn decode(d: &[u8]) -> LoraRegion {
         if let Ok(s) = core::str::from_utf8(d) {
             match s {
                 "EU868" => LoraRegion::EU868,

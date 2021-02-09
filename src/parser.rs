@@ -8,7 +8,7 @@ use nom::tag;
 use nom::take;
 use nom::IResult;
 
-use super::{EventCode, FirmwareInfo, LoraRegion, Response};
+use super::{protocol::Decoder, EventCode, FirmwareInfo, LoraRegion, Response};
 
 fn ascii_to_digit(character: u8) -> Option<u8> {
     match character {
@@ -159,7 +159,7 @@ named!(
             tag!("IN865")
         ) >>
         (
-                LoraRegion::parse(region)
+                LoraRegion::decode(region)
         )
     )
 );
