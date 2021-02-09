@@ -3,8 +3,8 @@ use crate::protocol::Response;
 use core::str::from_utf8;
 use moveslice::Moveslice;
 
-pub(crate) struct Buffer {
-    buffer: [u8; 4096],
+pub struct Buffer {
+    buffer: [u8; 512],
     pos: usize,
     needs_parse: bool,
 }
@@ -12,7 +12,7 @@ pub(crate) struct Buffer {
 impl Buffer {
     pub fn new() -> Self {
         Buffer {
-            buffer: [0; 4096],
+            buffer: [0; 512],
             pos: 0,
             needs_parse: false,
         }
@@ -41,11 +41,11 @@ impl Buffer {
         let str = from_utf8(&self.buffer[0..self.pos]);
         match str {
             Ok(s) => {
-                log::trace!("parsing {} [{}]", self.pos, s);
+                log::debug!("parsing {} [{}]", self.pos, s);
             }
             Err(e) => {
                 let s = from_utf8(&self.buffer[0..e.valid_up_to()]).unwrap();
-                log::trace!("parsing {} [{}<truncated>] ({})", self.pos, s, e);
+                log::debug!("parsing {} [{}<truncated>] ({})", self.pos, s, e);
             }
         }
 

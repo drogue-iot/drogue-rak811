@@ -63,7 +63,7 @@ mod error;
 mod parser;
 mod protocol;
 
-use buffer::*;
+pub use buffer::*;
 pub use drogue_lora::*;
 pub use error::*;
 use heapless::consts;
@@ -135,7 +135,7 @@ where
                     _ => Err(DriverError::NotInitialized),
                 }
             }
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -148,10 +148,10 @@ where
                 let response = self.recv_response()?;
                 match response {
                     Response::Recv(EventCode::JoinedSuccess, _, _, _) => Ok(()),
-                    r => Err(DriverError::UnexpectedResponse(r)),
+                    r => log_unexpected(r),
                 }
             }
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -161,7 +161,7 @@ where
         let response = self.send_command(Command::SetBand(band))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -171,7 +171,7 @@ where
         let response = self.send_command(Command::SetMode(mode))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -179,21 +179,22 @@ where
         let response = self.send_command(Command::SetConfig(ConfigOption::DevAddr(addr)))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
+
     pub fn set_device_eui(&mut self, eui: &EUI) -> Result<(), DriverError> {
         let response = self.send_command(Command::SetConfig(ConfigOption::DevEui(eui)))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
     pub fn set_app_eui(&mut self, eui: &EUI) -> Result<(), DriverError> {
         let response = self.send_command(Command::SetConfig(ConfigOption::AppEui(eui)))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -201,7 +202,7 @@ where
         let response = self.send_command(Command::SetConfig(ConfigOption::AppKey(key)))?;
         match response {
             Response::Ok => Ok(()),
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -217,10 +218,10 @@ where
                 };
                 match response {
                     Response::Recv(c, 0, _, _) if expected_code == c => Ok(()),
-                    r => Err(DriverError::UnexpectedResponse(r)),
+                    r => log_unexpected(r),
                 }
             }
-            r => Err(DriverError::UnexpectedResponse(r)),
+            r => log_unexpected(r),
         }
     }
 
@@ -325,6 +326,11 @@ where
         let response = self.recv_response()?;
         Ok(response)
     }
+}
+
+fn log_unexpected(r: Response) -> Result<(), DriverError> {
+    log::error!("Unexpected response: {:?}", r);
+    Err(DriverError::UnexpectedResponse)
 }
 
 #[cfg(test)]
