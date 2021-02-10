@@ -68,7 +68,7 @@ pub enum Response {
         rssi: i8,
         snr: u32,
     },
-    Initialized,
+    Initialized(LoraRegion),
 }
 
 #[derive(Debug, PartialEq)]

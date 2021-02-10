@@ -118,7 +118,10 @@ where
         self.rst.set_low().ok();
         let response = self.recv_response()?;
         match response {
-            Response::Initialized => Ok(()),
+            Response::Initialized(band) => {
+                self.lora_band = band;
+                Ok(())
+            }
             _ => Err(DriverError::NotInitialized),
         }
     }
@@ -131,7 +134,10 @@ where
             Response::Ok => {
                 let response = self.recv_response()?;
                 match response {
-                    Response::Initialized => Ok(()),
+                    Response::Initialized(band) => {
+                        self.lora_band = band;
+                        Ok(())
+                    }
                     _ => Err(DriverError::NotInitialized),
                 }
             }
@@ -157,11 +163,15 @@ where
 
     /// Set the frequency band based on the region.
     pub fn set_band(&mut self, band: LoraRegion) -> Result<(), DriverError> {
-        self.lora_band = band;
-        let response = self.send_command(Command::SetBand(band))?;
-        match response {
-            Response::Ok => Ok(()),
-            r => log_unexpected(r),
+        if self.lora_band != band {
+            self.lora_band = band;
+            let response = self.send_command(Command::SetBand(band))?;
+            match response {
+                Response::Ok => Ok(()),
+                r => log_unexpected(r),
+            }
+        } else {
+            Ok(())
         }
     }
 

@@ -231,7 +231,7 @@ named!(
         crlf >>
         crlf >>
         (
-            Response::Initialized
+            Response::Initialized(region)
         )
     )
 );
