@@ -216,6 +216,22 @@ where
         }
     }
 
+    pub fn set_apps_key(&mut self, key: &AppsKey) -> Result<(), DriverError> {
+        let response = self.send_command(Command::SetConfig(ConfigOption::AppsKey(key)))?;
+        match response {
+            Response::Ok => Ok(()),
+            r => log_unexpected(r),
+        }
+    }
+
+    pub fn set_nwks_key(&mut self, key: &NwksKey) -> Result<(), DriverError> {
+        let response = self.send_command(Command::SetConfig(ConfigOption::NwksKey(key)))?;
+        match response {
+            Response::Ok => Ok(()),
+            r => log_unexpected(r),
+        }
+    }
+
     /// Transmit data using the specified confirmation mode and given port.
     pub fn send(&mut self, qos: QoS, port: Port, data: &[u8]) -> Result<(), DriverError> {
         let response = self.send_command(Command::Send(qos, port, data))?;

@@ -10,6 +10,8 @@ pub enum ConfigKey {
     AppKey,
     NwksKey,
     AppsKey,
+    ChMask,
+    ChList,
 }
 
 #[derive(Debug)]
@@ -34,6 +36,7 @@ pub enum ConfigOption<'a> {
     AppKey(&'a AppKey),
     NwksKey(&'a NwksKey),
     AppsKey(&'a AppsKey),
+    ChMask(u8, u16),
     /*
     PwrLevel,
     Adr,
@@ -194,6 +197,12 @@ impl ConfigKey {
             ConfigKey::AppsKey => {
                 s.push_str("apps_key").unwrap();
             }
+            ConfigKey::ChMask => {
+                s.push_str("ch_mask").unwrap();
+            }
+            ConfigKey::ChList => {
+                s.push_str("ch_list").unwrap();
+            }
         }
     }
 }
@@ -293,6 +302,9 @@ impl<'a> ConfigOption<'a> {
                     key[15]
                 )
                 .unwrap();
+            }
+            ConfigOption::ChMask(id, mask) => {
+                write!(s, "ch_mask:{},{:04x}", id, mask).unwrap();
             }
         }
     }
