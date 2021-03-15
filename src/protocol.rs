@@ -211,97 +211,22 @@ impl<'a> ConfigOption<'a> {
     pub fn encode(&self, s: &mut CommandBuffer) {
         match self {
             ConfigOption::DevAddr(addr) => {
-                write!(
-                    s,
-                    "dev_addr:{:02x}{:02x}{:02x}{:02x}",
-                    addr[0], addr[1], addr[2], addr[3]
-                )
-                .unwrap();
+                write!(s, "dev_addr:{}", addr).unwrap();
             }
             ConfigOption::DevEui(eui) => {
-                write!(
-                    s,
-                    "dev_eui:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                    eui[0], eui[1], eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]
-                )
-                .unwrap();
+                write!(s, "dev_eui:{}", eui,).unwrap();
             }
             ConfigOption::AppEui(eui) => {
-                write!(
-                    s,
-                    "app_eui:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                    eui[0], eui[1], eui[2], eui[3], eui[4], eui[5], eui[6], eui[7]
-                )
-                .unwrap();
+                write!(s, "app_eui:{}", eui,).unwrap();
             }
             ConfigOption::AppKey(key) => {
-                write!(
-                    s,
-                    "app_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                    key[0],
-                    key[1],
-                    key[2],
-                    key[3],
-                    key[4],
-                    key[5],
-                    key[6],
-                    key[7],
-                    key[8],
-                    key[9],
-                    key[10],
-                    key[11],
-                    key[12],
-                    key[13],
-                    key[14],
-                    key[15]
-                )
-                .unwrap();
+                write!(s, "app_key:{}", key).unwrap();
             }
             ConfigOption::NwksKey(key) => {
-                write!(
-                    s,
-                    "nwks_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                    key[0],
-                    key[1],
-                    key[2],
-                    key[3],
-                    key[4],
-                    key[5],
-                    key[6],
-                    key[7],
-                    key[8],
-                    key[9],
-                    key[10],
-                    key[11],
-                    key[12],
-                    key[13],
-                    key[14],
-                    key[15]
-                )
-                .unwrap();
+                write!(s, "nwks_key:{}", key,).unwrap();
             }
             ConfigOption::AppsKey(key) => {
-                write!(
-                    s,
-                    "apps_key:{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
-                    key[0],
-                    key[1],
-                    key[2],
-                    key[3],
-                    key[4],
-                    key[5],
-                    key[6],
-                    key[7],
-                    key[8],
-                    key[9],
-                    key[10],
-                    key[11],
-                    key[12],
-                    key[13],
-                    key[14],
-                    key[15]
-                )
-                .unwrap();
+                write!(s, "apps_key:{}", key,).unwrap();
             }
             ConfigOption::ChMask(id, mask) => {
                 write!(s, "ch_mask:{},{:04x}", id, mask).unwrap();
